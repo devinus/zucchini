@@ -1,6 +1,6 @@
 Definitions.
 
-A = [a-z][a-zA-Z0-9_\.]
+A = [a-zA-Z][a-zA-Z0-9_:\-\.]*[a-zA-Z0-9]
 D = [0-9]
 S = [\s\t]
 
