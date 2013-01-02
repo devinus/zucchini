@@ -1,4 +1,7 @@
 .DS_Store
+.eunit
+.dialyzer_plt
+erl_crash.dump
+deps/
 ebin/
-src/zucchini_lexer.erl
-src/zucchini_parser.erl
+src/zucchini.erl

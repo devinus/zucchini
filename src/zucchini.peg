@@ -1,0 +1,66 @@
+sections <- ignorable* section section* ignorable* `
+    [_, Head, Tail, _] = Node,
+    [Head | Tail]
+`;
+
+section <- ignorable* '[' ws* section_key ws* ']' properties `
+    [_, <<$[>>, _, Key, _, <<$]>>, Props] = Node,
+    {Key, Props}
+`;
+
+properties <- property property* `
+    [Head, Tail] = Node,
+    [Head | Tail]
+`;
+
+property <- ignorable* property_key ws* '=' ws* (float / integer / boolean / quoted_string / string) `
+    [_, Key, _, <<$=>>, _, Value] = Node,
+    {Key, Value}
+`;
+
+section_key <- (!(ws* ']') (!crlf .))+ `binary_to_atom(iolist_to_binary(Node), utf8)`;
+property_key <- (!(ws* '=') (!crlf .))+ `binary_to_atom(iolist_to_binary(Node), utf8)`;
+
+digit <- [0-9] ~;
+integer <- '-'? digit+ `list_to_integer(binary_to_list(iolist_to_binary(Node)))`;
+float <- '-'? digit* '.' digit+ `
+    list_to_float(binary_to_list(iolist_to_binary(case Node of
+        [[], [], <<$.>>, Frac]  ->
+            [<<"0.">>, Frac];
+        [<<$->>, [], <<$.>>, Frac]  ->
+            [<<"-0.">>, Frac];
+        [[], Int, <<$.>>, Frac] ->
+            [Int, <<$.>>, Frac];
+        [<<$->>, Int, <<$.>>, Frac] ->
+            [<<$->>, Int, <<$.>>, Frac]
+    end)))
+`;
+
+boolean <- 'true' / 'false' / 'yes' / 'no' / 'on' / 'off' `
+    case Node of
+        Node when Node =:= <<"true">>; Node =:= <<"yes">>; Node =:= <<"on">> ->
+            true;
+        Node when Node =:= <<"false">>; Node =:= <<"no">>; Node =:= <<"off">> ->
+            false
+    end
+`;
+
+string <- (!(space* (crlf / comment)) .)* `
+    case Node of
+        [] -> undefined;
+        Node -> iolist_to_binary(Node)
+    end
+`;
+
+quoted_string <- '"' (!'"' .)* '"' `
+    case Node of
+        [<<$">>, [], <<$">>] -> <<>>;
+        [<<$">>, Str, <<$">>] -> iolist_to_binary(Str)
+    end
+`;
+
+space <- [\s\t] ~;
+crlf <- "\r\n" / "\n" / "\r" ~;
+ws <- space / crlf ~;
+comment <- ';' (!crlf .)* crlf ~;
+ignorable <- ws / comment ~;
